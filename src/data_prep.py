@@ -1,5 +1,5 @@
 """
-Limpieza de datos.
+Limpieza de datos — Desafío PD Andina Crédito.
 
 Transformaciones SIN ESTADO (deterministas, fila a fila): se aplican idénticas a
 train y test, no aprenden nada de la distribución. Implementan las decisiones
@@ -14,6 +14,8 @@ Uso:
     train = clean(pd.read_csv("data/train.csv"))
 """
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -27,6 +29,11 @@ ANTIG_LABORAL_MAX_MESES = 600      # 50 años de antigüedad laboral => imposibl
 COL_ID = "id_solicitud"
 COL_TARGET = "default_12m"
 COL_FECHA = "fecha_solicitud"
+
+# --- Capas de datos (arquitectura medallion) ---------------------------------
+RAW_DIR = Path("data/raw")        # data cruda del warehouse (se versiona en git)
+SILVER_DIR = Path("data/silver")  # data limpia y tipada (regenerable)
+GOLD_DIR = Path("data/gold")      # capa de negocio / features (regenerable)
 
 
 def clean(df: pd.DataFrame) -> pd.DataFrame:
@@ -61,20 +68,31 @@ def columnas_feature(df: pd.DataFrame) -> list[str]:
     return [c for c in df.columns if c not in excluir]
 
 
-if __name__ == "__main__":
-    # Chequeo de sanidad: aplica clean() a train y test y verifica el resultado.
-    from pathlib import Path
-    DATA = Path("data")
+def procesar_y_guardar(nombre: str) -> pd.DataFrame:
+    """Lee la capa raw, aplica clean() y materializa la capa silver.
 
+    El silver es un artefacto REGENERABLE (parquet, que preserva tipos y NaN):
+    la fuente de verdad sigue siendo el raw + este código. Se regenera con:
+        python src/data_prep.py
+    """
+    raw = pd.read_csv(RAW_DIR / f"{nombre}.csv")
+    out = clean(raw)
+
+    SILVER_DIR.mkdir(parents=True, exist_ok=True)
+    ruta = SILVER_DIR / f"{nombre}_silver.parquet"
+    out.to_parquet(ruta, index=False)
+
+    print(f"\n=== {nombre} ===")
+    print(f"  shape: {raw.shape} -> {out.shape}")
+    print(f"  ingresos corregidos: {int(out['ingreso_fue_corregido'].sum())}")
+    print(f"  ingreso < {INGRESO_UMBRAL_ERROR} tras corrección: "
+          f"{int((out['ingreso_declarado'] < INGRESO_UMBRAL_ERROR).sum())} (debe ser 0)")
+    print(f"  edades > {EDAD_MAX_PLAUSIBLE} tras limpieza: "
+          f"{int((out['edad'] > EDAD_MAX_PLAUSIBLE).sum())} (debe ser 0)")
+    print(f"  silver -> {ruta}")
+    return out
+
+
+if __name__ == "__main__":
     for nombre in ["train", "test"]:
-        raw = pd.read_csv(DATA / f"{nombre}.csv")
-        out = clean(raw)
-        print(f"\n=== {nombre} ===")
-        print(f"  shape: {raw.shape} -> {out.shape}")
-        print(f"  ingresos corregidos: {int(out['ingreso_fue_corregido'].sum())}")
-        print(f"  ingreso < {INGRESO_UMBRAL_ERROR} tras corrección: "
-              f"{int((out['ingreso_declarado'] < INGRESO_UMBRAL_ERROR).sum())} (debe ser 0)")
-        print(f"  edades > {EDAD_MAX_PLAUSIBLE} tras limpieza: "
-              f"{int((out['edad'] > EDAD_MAX_PLAUSIBLE).sum())} (debe ser 0)")
-        print(f"  nuevas columnas: "
-              f"{sorted(set(out.columns) - set(raw.columns))}")
+        procesar_y_guardar(nombre)
