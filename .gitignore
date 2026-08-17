@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+venv/
+env/
+
+# Modelos serializados (se regeneran corriendo el pipeline)
+*.pkl
+
+# OS
+.DS_Store
+
+# NOTA: data/ y predictions.csv NO se ignoran: son necesarios para reproducir.
