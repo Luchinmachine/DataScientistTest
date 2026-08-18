@@ -16,28 +16,44 @@ economía del producto. Desafío de Data Scientist.
 ```
 .
 ├── data/
-│   ├── raw/          train.csv, test.csv          (versionado: insumo)
-│   ├── silver/       data limpia y tipada          (regenerable)
-│   └── gold/         features de negocio           (regenerable)
+│   ├── raw/
+│   │   ├── train.csv                              (versionado: insumo)
+│   │   └── test.csv
+│   ├── silver/
+│   │   ├── train_silver.parquet                   (regenerable)
+│   │   └── test_silver.parquet
+│   └── gold/
+│       ├── train_gold.parquet                     (regenerable)
+│       └── test_gold.parquet
 ├── notebooks/
-│   └── 01_eda.ipynb                                análisis exploratorio
+│   └── 01_eda.ipynb                               análisis exploratorio
 ├── src/
-│   ├── data_prep.py       raw   -> silver          (limpieza determinística)
-│   ├── features.py        silver -> gold           (features de riesgo)
-│   ├── validation.py      split temporal + baseline + demo k-fold vs OOT
+│   ├── data_prep.py        raw   -> silver         (limpieza determinística)
+│   ├── features.py         silver -> gold          (features de riesgo)
+│   ├── validation.py       split temporal + baseline + demo k-fold vs OOT
 │   ├── comparar_leakage.py análisis de la variable con leakage
-│   ├── train.py           comparación de modelos (champion-challenger)
-│   ├── calibracion.py     calibración del modelo campeón
-│   ├── politica.py        política de aprobación + backtest de ganancia
-│   └── predict.py         modelo final -> predictions.csv
+│   ├── train.py            comparación de modelos (champion-challenger)
+│   ├── calibracion.py      calibración del modelo campeón
+│   ├── politica.py         política de aprobación + backtest de ganancia
+│   ├── predict.py          modelo final -> predictions.csv
+│   ├── eda_profiling.py    genera reporte HTML con ydata-profiling
+│   └── mlops_dashboard.py  genera panel de monitoreo MLOps (HTML)
 ├── reports/
-│   ├── informe_ejecutivo.md   informe para gerencia de Riesgo
-│   ├── referencias.md         fuentes de las decisiones
-│   ├── readme-desafio         enunciado original
-│   └── figures/               gráficos
-├── predictions.csv        entregable: id_solicitud, prob_default (12.000 filas)
+│   ├── informe_ejecutivo.md       informe para gerencia de Riesgo
+│   ├── referencias.md             fuentes de las decisiones
+│   ├── diccionario_datos.md       descripción de variables
+│   ├── README-Desafio.md          enunciado original del desafío
+│   ├── eda_profiling.html         reporte de perfilado automático
+│   ├── mlops_dashboard.html       panel de monitoreo MLOps
+│   ├── predictions_example.csv    ejemplo de formato de entrega
+│   └── figures/
+│       ├── calibracion.png
+│       ├── default_por_vintage.png
+│       └── reconciliacion_ingreso.png
+├── predictions.csv         entregable: id_solicitud, prob_default (12.000 filas)
 ├── AI_USAGE.md
 ├── requirements.txt
+├── requirements-eda.txt    dependencias opcionales (ydata-profiling)
 └── README.md
 ```
 
