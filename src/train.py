@@ -26,6 +26,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import roc_auc_score, brier_score_loss
+# pyrefly: ignore [missing-import]
 from xgboost import XGBClassifier
 
 from data_prep import GOLD_DIR, COL_TARGET
