@@ -101,8 +101,14 @@ equivocó o propuso algo subóptimo**. No incorporo nada que no pueda explicar y
 
 ## Extensiones planificadas (con apoyo de IA, pendientes)
 
-- **Perfilado automático del EDA** con `ydata-profiling` (HTML), como complemento —no
-  reemplazo— del análisis manual.
+- **Perfilado automático del EDA** con `ydata-profiling` (HTML): implementado en
+  `src/eda_profiling.py` (dependencias separadas en `requirements-eda.txt`), como
+  complemento —no reemplazo— del análisis manual.
 - **Panel HTML comparativo** de la serie de modelos propuestos (métricas out-of-time).
-- **Panel de monitoreo MLOps**: drift de features (PSI), drift de score y desempeño en el
-  tiempo; motivado por el drift real detectado en los datos (default de 7% a 13%).
+- **Panel de monitoreo MLOps** (`src/mlops_dashboard.py`): dashboard HTML interactivo
+  (Chart.js) con drift de features (PSI), drift de score, comparativo de modelos y política.
+  Se partió de una plantilla visual, pero traía datos fabricados que contradecían el
+  proyecto (curvas de entrenamiento de red neuronal para un modelo logístico; simulador con
+  cifras inventadas). Se reconstruyó **honesto por construcción**: curvas reales del XGBoost
+  challenger (rotuladas como tal), PSI real train→test, y el backtest real de la política.
+  Nada fabricado.
