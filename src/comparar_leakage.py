@@ -38,7 +38,9 @@ def psi(esperado: pd.Series, actual: pd.Series, bins: int = 10) -> float:
 def main():
     train = pd.read_parquet(GOLD_DIR / "train_gold.parquet")
     test = pd.read_parquet(GOLD_DIR / "test_gold.parquet")
-    num, cat = columnas_num_cat(train)
+    # Aquí SÍ incluimos la variable sospechosa: el propósito del script es comparar
+    # con vs sin. En el resto del modelado queda excluida por defecto.
+    num, cat = columnas_num_cat(train, excluir_leakage=False)
     num_sin = [c for c in num if c != VAR_SOSPECHOSA]
 
     tr, va = split_temporal(train)  # OOT: entrena en el pasado, valida en el futuro

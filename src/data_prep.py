@@ -30,6 +30,13 @@ COL_ID = "id_solicitud"
 COL_TARGET = "default_12m"
 COL_FECHA = "fecha_solicitud"
 
+# Variables con leakage sospechado: se excluyen del modelo por defecto.
+# `num_contactos_ult_trimestre` predice implausiblemente bien (importancia 13x la
+# siguiente, AUC 0.98) y su timing respecto a la solicitud no es verificable en el
+# diccionario => se excluye para no filtrar el resultado. Fuente única de verdad:
+# todos los scripts de modelado importan esta lista.
+COLS_LEAKAGE_SOSPECHADO = ["num_contactos_ult_trimestre"]
+
 # --- Capas de datos (arquitectura medallion) ---------------------------------
 # Rutas ancladas a la raíz del repo (src/ -> raíz) para que los scripts corran
 # desde cualquier directorio de trabajo, no solo desde la raíz.

@@ -20,7 +20,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.metrics import roc_auc_score, roc_curve
 
-from data_prep import GOLD_DIR, COL_ID, COL_TARGET, COL_FECHA
+from data_prep import GOLD_DIR, COL_ID, COL_TARGET, COL_FECHA, COLS_LEAKAGE_SOSPECHADO
 
 FECHA_CORTE_OOT = "2024-12-01"  # val = últimos ~3 meses del train (mimetiza el test)
 # Cortes para el split de tres vías (train / val / holdout), todos temporales:
@@ -56,13 +56,20 @@ def split_temporal_3(df: pd.DataFrame,
 
 
 # --- Columnas de features ----------------------------------------------------
-def columnas_num_cat(df: pd.DataFrame):
+def columnas_num_cat(df: pd.DataFrame, excluir_leakage: bool = True):
     """Separa columnas numéricas y categóricas (excluye id, target y fecha).
+
+    Por defecto excluye también las variables con leakage sospechado
+    (COLS_LEAKAGE_SOSPECHADO): así todo el modelado usa el set honesto sin repetir
+    la decisión en cada script. Pasar excluir_leakage=False para incluirlas (p.ej.
+    en comparar_leakage.py, que precisamente compara con vs sin).
 
     Se usa is_numeric_dtype (robusto) en vez de comparar dtype == 'object', que
     falla si el parquet devuelve las strings como dtype 'string' en vez de 'object'.
     """
     excluir = {COL_ID, COL_TARGET, COL_FECHA}
+    if excluir_leakage:
+        excluir |= set(COLS_LEAKAGE_SOSPECHADO)
     feats = [c for c in df.columns if c not in excluir]
     num = [c for c in feats if pd.api.types.is_numeric_dtype(df[c])]
     cat = [c for c in feats if c not in num]

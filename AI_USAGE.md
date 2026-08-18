@@ -56,6 +56,12 @@ equivocó o propuso algo subóptimo**. No incorporo nada que no pueda explicar y
    categóricas; al leer el parquet las strings no volvían como `object` y quedaban 0
    categóricas (el imputador de mediana explotó). Corrección: usar `is_numeric_dtype`.
 
+7. **Exclusión de leakage inconsistente entre scripts.** La decisión de excluir la variable
+   estaba hardcodeada solo en `comparar_leakage.py`; `validation.py` seguía usándola. Lo
+   detecté al revisar el código. Corrección: centralizar en `COLS_LEAKAGE_SOSPECHADO`
+   (fuente única de verdad en `data_prep.py`) y que todos los scripts la respeten por
+   defecto.
+
 ## Casos donde la IA cuestionó mi criterio (diálogo, no aceptación pasiva)
 
 - **Justificación del ingreso corregido.** Mi primera justificación para corregir los
