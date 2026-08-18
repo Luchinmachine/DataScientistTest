@@ -18,6 +18,7 @@ Uso:
 
 import numpy as np
 import pandas as pd
+from scipy.stats import spearmanr
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
@@ -68,13 +69,9 @@ def build_pipelines(num, cat):
     }
 
 
-def evaluar(pipe, cols, tr, ev):
-    """Ajusta en tr y evalúa en ev: AUC, KS, prob media predicha y Brier."""
-    pipe.fit(tr[cols], tr[COL_TARGET])
-    p = pipe.predict_proba(ev[cols])[:, 1]
-    y = ev[COL_TARGET]
+def _metricas(y, p):
     return dict(auc=roc_auc_score(y, p), ks=ks_score(y, p),
-                prob_media=p.mean(), brier=brier_score_loss(y, p))
+                prob=p.mean(), brier=brier_score_loss(y, p))
 
 
 def main():
@@ -88,18 +85,32 @@ def main():
 
     pipes = build_pipelines(num, cat)
 
-    # Selección: entrena en train, mide en VAL (para elegir sin tocar el holdout).
-    print(f"{'modelo':13s} {'AUC_val':>8s} {'KS_val':>7s} {'AUC_hold':>9s} "
-          f"{'KS_hold':>8s} {'prob_med':>9s} {'Brier':>7s}")
-    resultados = {}
+    # Ajusta cada modelo en train; guarda predicciones en val y holdout.
+    val_preds, hold_preds = {}, {}
     for nombre, pipe in pipes.items():
-        rv = evaluar(pipe, cols, train, val)
-        rh = evaluar(pipe, cols, train, holdout)   # holdout: reporte final
-        resultados[nombre] = rh
-        print(f"{nombre:13s} {rv['auc']:>8.4f} {rv['ks']:>7.4f} "
-              f"{rh['auc']:>9.4f} {rh['ks']:>8.4f} {rh['prob_media']*100:>8.2f}% {rh['brier']:>7.4f}")
+        pipe.fit(train[cols], train[COL_TARGET])
+        val_preds[nombre] = pipe.predict_proba(val[cols])[:, 1]
+        hold_preds[nombre] = pipe.predict_proba(holdout[cols])[:, 1]
 
-    print(f"\n(referencia: default real holdout = {holdout[COL_TARGET].mean()*100:.2f}%)")
+    # Ensemble (promedio simple). Se documenta que se probó; ver diversidad abajo.
+    val_preds["Ensemble(mean)"] = np.mean([val_preds[n] for n in pipes], axis=0)
+    hold_preds["Ensemble(mean)"] = np.mean([hold_preds[n] for n in pipes], axis=0)
+
+    yv, yh = val[COL_TARGET], holdout[COL_TARGET]
+    print(f"{'modelo':15s} {'AUC_val':>8s} {'KS_val':>7s} {'AUC_hold':>9s} "
+          f"{'KS_hold':>8s} {'prob_med':>9s} {'Brier':>7s}")
+    for nombre in hold_preds:
+        rv, rh = _metricas(yv, val_preds[nombre]), _metricas(yh, hold_preds[nombre])
+        print(f"{nombre:15s} {rv['auc']:>8.4f} {rv['ks']:>7.4f} "
+              f"{rh['auc']:>9.4f} {rh['ks']:>8.4f} {rh['prob']*100:>8.2f}% {rh['brier']:>7.4f}")
+
+    # Diversidad: correlación media entre las predicciones de los modelos base.
+    base = [hold_preds[n] for n in pipes]
+    corrs = [spearmanr(base[i], base[j]).correlation
+             for i in range(len(base)) for j in range(i + 1, len(base))]
+    print(f"\nCorrelación media entre modelos base: {np.mean(corrs):.3f} "
+          f"(alta => ensemble aporta poco)")
+    print(f"(referencia: default real holdout = {yh.mean()*100:.2f}%)")
 
 
 if __name__ == "__main__":

@@ -85,6 +85,14 @@ equivocó o propuso algo subóptimo**. No incorporo nada que no pueda explicar y
   los splits. La exclusión se decide por timing inverificable + dominancia implausible +
   riesgo de producción, no por el gap train/val.
 
+## Evaluación de técnicas antes de adoptarlas (criterio, no cargo-culting)
+
+- **Ensemble.** Evalué combinar los tres modelos (técnica popular en competencias). Medí
+  que las predicciones estaban muy correlacionadas (~0.95) y que el promedio no superaba de
+  forma consistente a la logística sola (mejor AUC por 0.002, pero peor KS y Brier). Sumado
+  al costo de interpretabilidad (adverse action / explicabilidad regulatoria en banca),
+  decidí NO usar ensemble. Probar y descartar con evidencia > aplicar por moda.
+
 ## Verificación (cómo controlo la calidad de lo generado)
 
 - Ejecuto todo el código generado y **reproduzco los números** antes de commitear.
