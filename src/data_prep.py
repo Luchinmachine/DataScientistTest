@@ -31,9 +31,12 @@ COL_TARGET = "default_12m"
 COL_FECHA = "fecha_solicitud"
 
 # --- Capas de datos (arquitectura medallion) ---------------------------------
-RAW_DIR = Path("data/raw")        # data cruda del warehouse (se versiona en git)
-SILVER_DIR = Path("data/silver")  # data limpia y tipada (regenerable)
-GOLD_DIR = Path("data/gold")      # capa de negocio / features (regenerable)
+# Rutas ancladas a la raíz del repo (src/ -> raíz) para que los scripts corran
+# desde cualquier directorio de trabajo, no solo desde la raíz.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+RAW_DIR = PROJECT_ROOT / "data" / "raw"        # data cruda del warehouse (versionada)
+SILVER_DIR = PROJECT_ROOT / "data" / "silver"  # data limpia y tipada (regenerable)
+GOLD_DIR = PROJECT_ROOT / "data" / "gold"      # capa de negocio / features (regenerable)
 
 
 def clean(df: pd.DataFrame) -> pd.DataFrame:

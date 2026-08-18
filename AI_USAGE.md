@@ -48,6 +48,14 @@ equivocó o propuso algo subóptimo**. No incorporo nada que no pueda explicar y
    transformaciones con estado (imputación, codificación, escalado) en las capas de datos,
    para evitar leakage: esas viven en el pipeline del modelo, ajustadas solo con train.
 
+5. **Rutas relativas al directorio de trabajo.** Los scripts asumían ejecución desde la
+   raíz del repo; al correr desde `src/` fallaban (`FileNotFoundError`). Corrección: anclar
+   las rutas al archivo (`Path(__file__)`) para que corran desde cualquier directorio.
+
+6. **Detección de tipos frágil.** El código comparaba `dtype == "object"` para hallar las
+   categóricas; al leer el parquet las strings no volvían como `object` y quedaban 0
+   categóricas (el imputador de mediana explotó). Corrección: usar `is_numeric_dtype`.
+
 ## Casos donde la IA cuestionó mi criterio (diálogo, no aceptación pasiva)
 
 - **Justificación del ingreso corregido.** Mi primera justificación para corregir los
@@ -55,6 +63,16 @@ equivocó o propuso algo subóptimo**. No incorporo nada que no pueda explicar y
   a **validar la hipótesis** de error de unidad con evidencia: magnitud del factor,
   reconciliación de la distribución completa al multiplicar ×1000, y tasa de default normal
   del grupo. Mantuve la decisión, pero ahora con una justificación defendible.
+
+## Detección de leakage (criterio propio sobre performance sospechosa)
+
+- Un baseline logístico dio AUC ~0.98, irrealmente alto para riesgo crediticio. En vez de
+  reportarlo, investigué: la variable `num_contactos_ult_trimestre` (correlación 0.735 con
+  el target) explicaba sola ~0.14 de AUC (0.98 → 0.83 al quitarla). El diccionario no
+  aclara si esos contactos son previos o posteriores a la solicitud → riesgo de leakage.
+  **Decisión:** reportar la performance honesta sin esa variable y documentar el riesgo,
+  en vez de exhibir un AUC inflado. La validación out-of-time NO detecta este tipo de leak
+  (no es temporal): se detecta con razonamiento de dominio.
 
 ## Verificación (cómo controlo la calidad de lo generado)
 
