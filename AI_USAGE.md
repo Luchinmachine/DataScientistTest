@@ -73,6 +73,11 @@ equivocó o propuso algo subóptimo**. No incorporo nada que no pueda explicar y
   **Decisión:** reportar la performance honesta sin esa variable y documentar el riesgo,
   en vez de exhibir un AUC inflado. La validación out-of-time NO detecta este tipo de leak
   (no es temporal): se detecta con razonamiento de dominio.
+- **Sobreajuste ≠ leakage.** Verifiqué que con la variable el AUC no baja de train a
+  validación (gap ~0.001): no hay sobreajuste. Pero eso no la salva — un split detecta
+  sobreajuste, no leakage: una variable que filtra el target generaliza perfecto en todos
+  los splits. La exclusión se decide por timing inverificable + dominancia implausible +
+  riesgo de producción, no por el gap train/val.
 
 ## Verificación (cómo controlo la calidad de lo generado)
 

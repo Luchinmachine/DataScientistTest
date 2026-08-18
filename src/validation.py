@@ -10,13 +10,6 @@ Uso:
     python src/validation.py
 """
 
-import sys
-from pathlib import Path
-
-# Asegura que src/ esté en el path para importar data_prep
-# sin importar desde qué directorio se ejecute el script.
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
@@ -27,9 +20,12 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.metrics import roc_auc_score, roc_curve
 
-from data_prep import GOLD_DIR, SILVER_DIR, COL_ID, COL_TARGET, COL_FECHA
+from data_prep import GOLD_DIR, COL_ID, COL_TARGET, COL_FECHA
 
 FECHA_CORTE_OOT = "2024-12-01"  # val = últimos ~3 meses del train (mimetiza el test)
+# Cortes para el split de tres vías (train / val / holdout), todos temporales:
+FECHA_CORTE_VAL = "2024-10-01"      # train < corte_val
+FECHA_CORTE_HOLDOUT = "2024-12-01"  # val en [corte_val, corte_holdout); holdout >= corte_holdout
 SEED = 42
 
 
@@ -41,6 +37,22 @@ def split_temporal(df: pd.DataFrame, fecha_corte: str = FECHA_CORTE_OOT):
     tr = df[fechas < corte].copy()
     va = df[fechas >= corte].copy()
     return tr, va
+
+
+def split_temporal_3(df: pd.DataFrame,
+                     corte_val: str = FECHA_CORTE_VAL,
+                     corte_holdout: str = FECHA_CORTE_HOLDOUT):
+    """Split temporal de tres vías: train (tunea) / val (elige) / holdout (reporta 1 vez).
+
+    Todo temporal, para imitar el salto real train->test y evitar contaminar la
+    estimación honesta al tunear.
+    """
+    fechas = pd.to_datetime(df[COL_FECHA])
+    cv, ch = pd.Timestamp(corte_val), pd.Timestamp(corte_holdout)
+    train = df[fechas < cv].copy()
+    val = df[(fechas >= cv) & (fechas < ch)].copy()
+    holdout = df[fechas >= ch].copy()
+    return train, val, holdout
 
 
 # --- Columnas de features ----------------------------------------------------
@@ -83,21 +95,7 @@ def ks_score(y_true, y_score):
 
 
 def main():
-    # Usa la capa gold si existe; si no, usa silver (regenerable con data_prep.py)
-    gold_path = GOLD_DIR / "train_gold.parquet"
-    silver_path = SILVER_DIR / "train_silver.parquet"
-    if gold_path.exists():
-        gold = pd.read_parquet(gold_path)
-        capa = "gold"
-    elif silver_path.exists():
-        gold = pd.read_parquet(silver_path)
-        capa = "silver"
-    else:
-        raise FileNotFoundError(
-            f"No se encontró la capa gold ni silver.\n"
-            f"Ejecuta primero: python src/data_prep.py"
-        )
-    print(f"[info] Cargando capa '{capa}': {gold.shape}")
+    gold = pd.read_parquet(GOLD_DIR / "train_gold.parquet")
     num, cat = columnas_num_cat(gold)
     X, y = gold[num + cat], gold[COL_TARGET]
     print(f"Features: {len(num)} numéricas + {len(cat)} categóricas | filas: {len(gold)}")
