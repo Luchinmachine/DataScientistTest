@@ -1,71 +1,89 @@
-# Desafío Data Scientist — Modelo de Probabilidad de Default (Andina Crédito)
+# Modelo de Probabilidad de Default — Andina Crédito
 
-Modelo de probabilidad de *default* (mora 90+ días dentro de 12 meses del desembolso)
-para apoyar la decisión de aprobación de créditos de consumo, con una política de
-aprobación basada en la economía del producto.
+Modelo que estima la probabilidad de *default* (mora 90+ días dentro de 12 meses del
+desembolso) para créditos de consumo, y una **política de aprobación** basada en la
+economía del producto. Desafío de Data Scientist.
 
-## Estructura del repositorio
+## Resultado
+
+- **Discriminación honesta:** AUC ≈ 0,83 · KS ≈ 0,51 (validación out-of-time).
+- **Impacto de negocio:** la política casi cuadruplica la ganancia del portafolio
+  (198 → 734 MM CLP en backtest) y reduce la mora entre aprobados de 12,5% a 6,1%.
+- Ver `reports/informe_ejecutivo.md`.
+
+## Estructura
 
 ```
 .
 ├── data/
-│   ├── raw/                    # data cruda del warehouse (versionada): train.csv, test.csv
-│   ├── silver/                 # data limpia y tipada (regenerable, parquet)
-│   └── gold/                   # capa de negocio / features para el modelo (regenerable)
+│   ├── raw/          train.csv, test.csv          (versionado: insumo)
+│   ├── silver/       data limpia y tipada          (regenerable)
+│   └── gold/         features de negocio           (regenerable)
 ├── notebooks/
-│   └── 01_eda.ipynb            # análisis exploratorio con narrativa (ejecutado)
+│   └── 01_eda.ipynb                                análisis exploratorio
 ├── src/
-│   ├── data_prep.py            # raw -> silver: limpieza determinística
-│   ├── features.py             # silver -> gold: features de negocio (etapa siguiente)
-│   ├── train.py                # entrenamiento + validación out-of-time (etapa siguiente)
-│   └── predict.py              # genera predictions.csv (etapa siguiente)
+│   ├── data_prep.py       raw   -> silver          (limpieza determinística)
+│   ├── features.py        silver -> gold           (features de riesgo)
+│   ├── validation.py      split temporal + baseline + demo k-fold vs OOT
+│   ├── comparar_leakage.py análisis de la variable con leakage
+│   ├── train.py           comparación de modelos (champion-challenger)
+│   ├── calibracion.py     calibración del modelo campeón
+│   ├── politica.py        política de aprobación + backtest de ganancia
+│   └── predict.py         modelo final -> predictions.csv
 ├── reports/
-│   ├── informe_ejecutivo.md    # informe para el gerente de Riesgo (<= 2 págs)
-│   ├── readme-desafio          # enunciado original del desafío
-│   └── figures/                # gráficos citados en el informe
-├── predictions.csv             # entregable: id_solicitud, prob_default (12.000 filas)
-├── AI_USAGE.md                 # uso de IA y correcciones aplicadas
+│   ├── informe_ejecutivo.md   informe para gerencia de Riesgo
+│   ├── referencias.md         fuentes de las decisiones
+│   ├── readme-desafio         enunciado original
+│   └── figures/               gráficos
+├── predictions.csv        entregable: id_solicitud, prob_default (12.000 filas)
+├── AI_USAGE.md
 ├── requirements.txt
 └── README.md
 ```
 
-## Arquitectura de datos (medallion)
-
-- **raw** → data tal como llega del warehouse. Inmutable, versionada.
-- **silver** → data limpia, validada y tipada (`src/data_prep.py`).
-- **gold** → capa de negocio con features, lista para el modelo (`src/features.py`).
-
-Las capas silver y gold son artefactos **regenerables** desde raw + código; por eso no
-se versionan. Las transformaciones *con estado* (imputación, codificación, escalado) NO
-viven en las capas de datos: van en el pipeline del modelo, ajustadas solo con train,
-para evitar leakage.
-
 ## Cómo reproducir
+
+> **Python:** el pipeline principal se probó con **Python 3.12** (soporta 3.11–3.13).
+> El análisis opcional con `ydata-profiling` requiere Python < 3.13 (ver `requirements-eda.txt`).
 
 ```bash
 # 1. Entorno e instalación
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# 2. Generar la capa silver desde raw
-python src/data_prep.py
+# 2. Pipeline principal (regenera predictions.csv desde la data cruda)
+python src/data_prep.py    # raw    -> silver
+python src/features.py     # silver -> gold
+python src/predict.py      # gold   -> predictions.csv (en la raíz)
+```
 
-# 3. Análisis exploratorio (genera figuras en reports/figures/)
-jupyter nbconvert --to notebook --execute --inplace notebooks/01_eda.ipynb
+Análisis de apoyo (opcionales, reproducen los hallazgos del informe). El notebook de EDA
+requiere `jupyter` (`pip install jupyter`):
 
-# 4. (Etapas siguientes) features, entrenamiento y predicción
-# python src/features.py
-# python src/train.py
-# python src/predict.py     # regenera predictions.csv en la raíz
+```bash
+jupyter nbconvert --to notebook --execute --inplace notebooks/01_eda.ipynb  # EDA
+python src/validation.py        # validación out-of-time vs k-fold
+python src/comparar_leakage.py  # con vs sin la variable con leakage
+python src/train.py             # comparación de modelos + ensemble
+python src/calibracion.py       # calibración
+python src/politica.py          # política de aprobación + ganancia
 ```
 
 ## Decisiones metodológicas (resumen)
 
-- **Validación out-of-time**, no k-fold aleatorio: train (2024-01 a 2025-02) y test
-  (2025-02 a 2025-06) están separados en el tiempo; validar aleatorio filtraría el futuro.
-- **Corrección de ingreso mal registrado** (error de unidad, ×1000) validada por
-  reconciliación de la distribución completa; se añade un indicador de corrección.
-- **Tendencia de default al alza** (7% → 13% en el train): se explora ponderación por
-  recencia para reflejar el régimen de riesgo actual.
+- **Arquitectura medallion** (raw → silver → gold). Las transformaciones con estado
+  (imputación, codificación, escalado) van en el pipeline del modelo, ajustadas solo con
+  train, para evitar leakage.
+- **Corrección de ingreso** mal registrado (error de unidad ×1000), validada por
+  reconciliación de la distribución completa; con indicador de corrección.
+- **Validación out-of-time** de tres vías (train / validación / holdout), no k-fold
+  aleatorio: train y test están separados en el tiempo.
+- **Exclusión de una variable con leakage** (`num_contactos_ult_trimestre`): predecía
+  implausiblemente bien y su disponibilidad al momento de decidir no es verificable. Se
+  reporta el desempeño honesto sin ella.
+- **Modelo:** regresión logística (empató a XGBoost/Random Forest/ensemble y gana en
+  interpretabilidad), **calibrado** (isotónica) porque la política usa la probabilidad como
+  insumo económico.
+- **Política de aprobación** por valor esperado por solicitud; el umbral depende del plazo.
 
-*(Este README se completará a medida que se agreguen las etapas de modelado.)*
+Fundamentos y fuentes en `reports/referencias.md`.
